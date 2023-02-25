@@ -37,10 +37,9 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
         # Import parameters from config.ini file
         self.config_dict = self.get_params_dict(param_path_file)
 
-    @classmethod
-    def get_k_from_map(cls, mapin, pixsize_arcsec):
+    def get_k_from_map(self, mapin, pixsize_arcsec):
         dims = np.shape(mapin)
-        return cls.get_kmap(dims, pixsize_arcsec)
+        return self.get_kmap_idl(dims, pixsize_arcsec)
 
     def get_kmap(self, dims, pixsize_arcsec):
 
@@ -99,7 +98,7 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
 
         return ps2d
 
-    def get_twod_ifft(self, map_one, map_two=None, pix_arcsec=False):
+    def get_twod_ifft_idl(self, map_one, map_two=None, pix_arcsec=False):
         dims = np.shape(map_one)
         if pix_arcsec:
             fac = (pix_arcsec / 3600 * (np.pi / 180)) ** 2 * (dims[0] * dims[1])
@@ -110,7 +109,7 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
         else:
             return np.real(np.fft.ifft2(map_one) * np.conj(np.fft.ifft2(map_two))) * fac
 
-    def get_twod_ifft_new(self, map_one, map_two=None, pix_arcsec=False):
+    def get_twod_ifft(self, map_one, map_two=None, pix_arcsec=False):
         if map_two is None:
             map_two = map_one.copy()
         dimx, dimy = map_one.shape
@@ -149,7 +148,9 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
 
         if not width:
             dims = np.shape(mapin)
-            kmap = self.get_kmap(dims, pix_arcsec)
+            #kmap = self.get_kmap(dims, pix_arcsec)
+            kmap = self.get_k_from_map(mapin, pix_arcsec)
+
             nk = int(np.floor(np.max(kmap) / deltal))
             ell = np.arange(nk) * deltal + deltal / 2 + lmin
         else:
@@ -189,9 +190,9 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
 
             imode_map = (np.real(np.fft.ifft2(imap_ring)) + np.imag(np.fft.ifft2(imap_ring)))
             if mask_two is None:
-                imask_mkk = self.get_twod_fft(imode_map, map_two=None, pix_arcsec=None)
+                imask_mkk = self.get_twod_fft_idl(imode_map, map_two=None, pix_arcsec=None)
             else:
-                imask_mkk = self.get_twod_fft(imode_map * mask_one, map_two=imode_map * mask_two, pix_arcsec=None)
+                imask_mkk = self.get_twod_fft_idl(imode_map * mask_one, map_two=imode_map * mask_two, pix_arcsec=None)
 
             #pdb.set_trace()
             ipk_mask, ipk_ell = self.bin_in_rings(imask_mkk, ell_bins, kmap)
@@ -237,7 +238,8 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
         for ione, imap_one in enumerate(maps_dict_keys_one):
             for itwo, imap_two in enumerate(maps_dict_keys_two):
                 fwhm_match = (maps_dict[imap_one]['fwhm'] == maps_dict_two[imap_two]['fwhm'])
-                if fwhm_match or (cross_spectra is True):
+                if (fwhm_match or ((cross_spectra is True) and (ione <= itwo))):
+                    #print(ione, itwo)
                     mkk_key = 'x'.join([imap_one, imap_two, str(iterations)])
                     ell_key = '__deltal_{0:0.0f}__width_{1:0.2f}'.format(deltal, width).replace('.', 'p')
                     path_mkk_dir = self.parse_path(os.path.join(self.config_dict['io']['output_folder'])+' mkk')
@@ -303,7 +305,9 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
             for itwo, imap_two in enumerate(maps_dict_two.keys()):
                 # compare beamsizes cross_spectra==True is when beam sizes do not match
                 fwhm_match = (maps_dict[imap_one]['fwhm'] == maps_dict_two[imap_two]['fwhm'])
-                if fwhm_match or (cross_spectra is True):
+                if (fwhm_match or ((cross_spectra is True) and (ione <= itwo))):
+                    #print(fwhm_match)
+                    #print(ione, itwo)
                     mask_key = ""
                     if 'masks' in maps_dict[imap_one]:
                         if 'hanning' in maps_dict[imap_one]['masks']:
@@ -312,14 +316,15 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                             mask_key = 'blackman'
                         if 'kaiser' in maps_dict[imap_one]['masks']:
                             mask_key = 'kaiser'
+                    fft_key = 'X'.join([imap_one, imap_two])
                     pk_key = 'X'.join([imap_one, imap_two, str(iterations)])
                     ell_key = '__deltal_{0:0.0f}__width_{1:0.2f}'.format(deltal, width).replace('.', 'p')
                     pk_filename = pk_key + ell_key + '.pkl'
-                    path_pk_dir = self.parse_path(os.path.join(self.config_dict['io']['output_folder']) + ' pk')
+                    #path_pk_dir = self.parse_path(os.path.join(self.config_dict['io']['output_folder']) + ' pk')
                     #path_pk_file = os.path.join(path_pk_dir, pk_filename)
                     #print(path_pk_file)
                     path_pk_file = os.path.join(self.config_dict['io']['saved_data_path'], pk_filename)
-                    fft_key = 'X'.join([imap_one, imap_two])
+                    #print(pk_key)
                     fft_filename = fft_key + mask_key + '.fits' #'.pkl'
                     path_fft_dir = self.parse_path(os.path.join(self.config_dict['io']['output_folder']) + ' fft')
                     path_fft_file = os.path.join(path_fft_dir, fft_filename)
@@ -329,16 +334,16 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         #fft_array = Toolbox.import_saved_pickles(path_fft_file)
                         fft_array = fits.getdata(path_fft_file, 0, header=False)
                     else:
-                        print('Calculating {} pk'.format(pk_key))
-                        kmap = maps_dict[imap_one]['kmap']
+                        print('Calculating {} fft'.format(fft_key))
+                        #kmap = maps_dict[imap_one]['kmap']
                         pix_arcsec = maps_dict[imap_one]['pixel_size']
-                        wavelength_one = maps_dict[imap_one]['wavelength']
-                        wavelength_two = maps_dict_two[imap_two]['wavelength']
+                        #wavelength_one = maps_dict[imap_one]['wavelength']
+                        #wavelength_two = maps_dict_two[imap_two]['wavelength']
 
                         # get maps
                         map_one = maps_dict[imap_one]['map']
                         map_two = maps_dict_two[imap_two]['map']
-                        ell_bins = self.get_ell_bins(map_one, pix_arcsec, deltal=deltal, width=width)
+                        #ell_bins = self.get_ell_bins(map_one, pix_arcsec, deltal=deltal, width=width)
 
                         # get masks
                         mask_one = maps_dict[imap_one]['masks']['mask']
@@ -353,8 +358,8 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                             mask_one *= maps_dict[imap_one]['masks']['blackman']
                             mask_two *= maps_dict_two[imap_two]['masks']['blackman']
 
-                        #fft_array = self.get_twod_ifft(map_one * mask_one, map_two * mask_two, pix_arcsec=pix_arcsec)
-                        fft_array = self.get_twod_fft(map_one * mask_one, map_two * mask_two, pix_arcsec=pix_arcsec)
+                        fft_array = self.get_twod_ifft_idl(map_one * mask_one, map_two * mask_two, pix_arcsec=pix_arcsec)
+                        #fft_array = self.get_twod_fft(map_one * mask_one, map_two * mask_two, pix_arcsec=pix_arcsec)
 
                         hdu = fits.PrimaryHDU(fft_array, header=self.maps_dict[imap_one]['header'])
                         hdul = fits.HDUList([hdu])
@@ -363,7 +368,6 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                     # Import or Calculate PK
                     if os.path.isfile(path_pk_file) and not overwrite:
                         pk_dict = Toolbox.import_saved_pickles(path_pk_file)
-                        #Toolbox.save_to_pickles(path_fft_file, fft_array)
                     else:
                         print('Calculating {} pk'.format(pk_key))
                         kmap = maps_dict[imap_one]['kmap']
@@ -374,15 +378,6 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         ell_bins = self.get_ell_bins(fft_array, pix_arcsec, deltal=deltal, width=width)
                         pk_array, ell = self.bin_in_rings(fft_array, ell_bins, kmap)
 
-                        '''
-                        ell = np.sqrt(ell_bins[:-1] * ell_bins[1:])
-                        nbins=len(ell)
-                        ell, pk_array = self.Cl_from_map2D(map_a=map_one, map_b=map_two, mask=mask_one,
-                                                           pixsize=pix_arcsec, lbinedges=ell_bins, lbins=ell,
-                                                           nbins=nbins, logbin=False, weights=None, return_full=False,
-                                                           return_Dl=False, interp_Cl=False)
-                        '''
-
                         # get beam
                         try:
                             map_fwhm_one = maps_dict[imap_one]['beam']['fwhm']
@@ -390,23 +385,25 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         except:
                             map_fwhm_one = maps_dict[imap_one]['fwhm']
                             map_fwhm_two = maps_dict_two[imap_two]['fwhm']
-                        Bl1 = self.get_psf_correction(ell, map_fwhm_one, map_fwhm_one)
-                        Bl2 = self.get_psf_correction(ell, map_fwhm_two, map_fwhm_two)
-                        Bl = self.get_psf_correction(ell, map_fwhm_one, map_fwhm_two)
-                        ipix = self.pixel_beam_function(ell, pix_arcsec)
+                        Bl1 = self.get_psf_correction(ell_bins, map_fwhm_one, map_fwhm_one)
+                        Bl2 = self.get_psf_correction(ell_bins, map_fwhm_two, map_fwhm_two)
+                        Bl = self.get_psf_correction(ell_bins, map_fwhm_one, map_fwhm_two)
+                        ipix = self.pixel_beam_function(ell_bins, pix_arcsec)
 
                         # save pk
-                        pk_dict = {'ell': ell,
-                                   'psf1': Bl1,
-                                   'psf2': Bl2,
-                                   'Bl': Bl,
-                                   'pix': ipix,
-                                   'epsf': ipix*Bl,
-                                   'wv1': wavelength_one,
-                                   'wv2': wavelength_two,
-                                   'pk_raw': pk_array,
-                                   'pk_beam_corrected': pk_array / Bl / ipix
-                                   }
+                        pk_dict = {
+                            'ell': ell,
+                            'ell_bins': ell_bins,
+                            'psf1': Bl1,
+                            'psf2': Bl2,
+                            'Bl': Bl,
+                            'pix': ipix,
+                            'epsf': ipix*Bl,
+                            'wv1': wavelength_one,
+                            'wv2': wavelength_two,
+                            'pk_raw': pk_array,
+                            'pk_beam_corrected': pk_array / Bl / ipix
+                        }
 
                         # Correct MKK if given.
                         if mkk_dict is not None:

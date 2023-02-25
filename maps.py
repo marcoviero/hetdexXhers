@@ -29,10 +29,11 @@ class Maps:
 		'''
 
 		for imap in self.config_dict['maps']:
+			print(imap)
 			try:
 				map_params = self.config_dict['maps'][imap].copy()
 			except:
-				#print('failed to read')
+				print('failed to read')
 				pass
 				#pdb.set_trace()
 			map_dict = self.import_map_dict(map_params,
@@ -116,10 +117,13 @@ class Maps:
 		map_dict['masks'] = mask_dict
 
 		#GET KMAP
-		map_dict['kmap'] = self.get_kmap(dims, pix)
+		#map_dict['kmap'] = self.get_kmap(dims, pix)
+		map_dict['kmap'] = self.get_k_from_map(cmap, pix)
+
 
 		#READ BEAMS
 		fwhm = psf["fwhm"]
+		#print(fwhm)
 		kern = self.gauss_kern(fwhm, np.floor(fwhm * 8.)/pix, pix)
 
 		map_dict["map"] = self.clean_nans(cmap) * color_correction

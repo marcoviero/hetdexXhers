@@ -155,7 +155,7 @@ class Toolbox:
         return np.array([1e-9 * c_light / (i * 1e-6) for i in lam])
 
     @staticmethod
-    def get_psf_correction(ell, fwhm_arcsec, fwhm_arcsec2=None):
+    def get_psf_correction_linear(ell, fwhm_arcsec, fwhm_arcsec2=None):
         sigma_radian1 = (fwhm_arcsec / 3600 * np.pi / 180) / np.sqrt(8 * np.log10(2))
         sigma_ell1 = 1 / sigma_radian1
         Bl1 = np.exp(-0.5 * (ell / sigma_ell1) ** 2)
@@ -167,6 +167,62 @@ class Toolbox:
             return Bl
         else:
             return Bl1
+
+    @staticmethod
+    def get_weighted_Bl(ell_lo, deltal, sigma_radian1):
+        sigma_ell1 = 1 / sigma_radian1
+        ell = np.arange(ell_lo, ell_lo + deltal)
+        iBl = np.sum((2 * ell + 1) * (np.exp(-0.5 * (ell / sigma_ell1) ** 2))) / np.sum((2 * ell + 1))
+        return iBl
+
+    @staticmethod
+    def get_psf_correction(ell_bins, fwhm_arcsec, fwhm_arcsec2=None):
+        sigma_radian1 = (fwhm_arcsec / 3600 * np.pi / 180) / np.sqrt(8 * np.log10(2))
+        Bl1 = np.array([Toolbox.get_weighted_Bl(ell_bins[i], d, sigma_radian1)
+                        for i, d in enumerate(np.diff(ell_bins))])
+
+        if fwhm_arcsec2:
+            sigma_radian2 = (fwhm_arcsec2 / 3600 * np.pi / 180) / np.sqrt(8 * np.log10(2))
+            Bl2 = np.array([Toolbox.get_weighted_Bl(ell_bins[i], d, sigma_radian2)
+                            for i, d in enumerate(np.diff(ell_bins))])
+            Bl = np.sqrt(Bl1 * Bl2)
+            return Bl
+        else:
+            return Bl1
+
+    @staticmethod
+    def pixel_beam_function_linear(ell, pix_arcsec):
+
+        # from: http: // xxx.lanl.gov / abs / astro - ph / 0007212
+        # calculate pixel beam function
+        # for square pixels res_arcmin is the side of the square pixel
+
+        #pix = res_arcmin / 60 * dtor
+        pix = pix_arcsec / 3600 * dtor
+
+        out = (np.exp(-1 / 18.1 * (ell * pix) ** 2.04) * (1 - 0.0272 * (ell * pix) ** 2))
+
+        return out**2
+
+    @staticmethod
+    def get_weighted_pixel(ell_lo, deltal, pix):
+        ell = np.arange(ell_lo, ell_lo + deltal)
+        out = np.sum((2 * ell + 1) * (np.exp(-1 / 18.1 * (ell * pix) ** 2.04) * (1 - 0.0272 * (ell * pix) ** 2))) / \
+              np.sum((2 * ell + 1))
+        return out
+
+    @staticmethod
+    def pixel_beam_function(ell_bins, pix_arcsec):
+
+        # from: http: // xxx.lanl.gov / abs / astro - ph / 0007212
+        # calculate pixel beam function
+        # for square pixels res_arcmin is the side of the square pixel
+
+        pix = pix_arcsec / 3600 * dtor
+        out = np.array([Toolbox.get_weighted_pixel(ell_bins[i], d, pix)
+                        for i, d in enumerate(np.diff(ell_bins))])
+
+        return out**2
 
     def comoving_volume_given_area(self, area_deg2, zz1, zz2):
         vol0 = self.config_dict['cosmology_dict']['cosmology'].comoving_volume(zz2) - \
@@ -218,20 +274,6 @@ class Toolbox:
     def shift_twod(seq, x, y):
         out = np.roll(np.roll(seq, int(x), axis=1), int(y), axis=0)
         return out
-
-    @staticmethod
-    def pixel_beam_function(ell, pix_arcsec):
-
-        # from: http: // xxx.lanl.gov / abs / astro - ph / 0007212
-        # calculate pixel beam function
-        # for square pixels res_arcmin is the side of the square pixel
-
-        #pix = res_arcmin / 60 * dtor
-        pix = pix_arcsec / 3600 * dtor
-
-        out = (np.exp(-1 / 18.1 * (ell * pix) ** 2.04) * (1 - 0.0272 * (ell * pix) ** 2))
-
-        return out**2
 
     def smooth_psf(self, mapin, psfin):
 
