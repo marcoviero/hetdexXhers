@@ -22,7 +22,7 @@ class Maps:
 	def __init__(self):
 		pass
 
-	def import_maps(self, zeropad=False, mask=None):
+	def import_maps(self, zeropad=False, mask=None, footprint_path=None):
 		''' Import maps (and optionally noisemaps) described in config file.
 
 		:return: Map dictionary stored in self.maps_dict.
@@ -38,10 +38,11 @@ class Maps:
 				#pdb.set_trace()
 			map_dict = self.import_map_dict(map_params,
 											zeropad=zeropad,
-											mask=mask)
+											mask=mask,
+											footprint_path=footprint_path)
 			self.maps_dict[imap] = map_dict
 
-	def import_map_dict(self, map_params, zeropad=False, mask=None):
+	def import_map_dict(self, map_params, zeropad=False, mask=None, footprint_path=None):
 		''' Import maps described in config file and populate map_dict with parameters.
 
 		:param map_dict:
@@ -100,8 +101,12 @@ class Maps:
 
 		#GET MASKS
 		mask_dict = {}
-		mask_dict['mask'] = np.ones_like(cmap)
-		mask_dict['mask'][np.isnan(cmap)] = 0
+		if footprint_path is not None:
+			footprint, hdf = fits.getdata(footprint_path, 0, header=True)
+			mask_dict['mask'] = footprint
+		else:
+			mask_dict['mask'] = np.ones_like(cmap)
+			mask_dict['mask'][np.isnan(cmap)] = 0
 		if mask is not None:
 			if type(mask) is dict:
 				if 'kaiser' in mask:
