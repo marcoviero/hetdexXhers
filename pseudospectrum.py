@@ -11,6 +11,7 @@ from configparser import ConfigParser
 from scipy.io import readsav
 from scipy.ndimage.filters import gaussian_filter
 from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 from maps import Maps
 from catalogs import Catalogs
@@ -241,6 +242,7 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                 if (fwhm_match or ((cross_spectra is True) and (ione <= itwo))):
                     #print(ione, itwo)
                     mkk_key = 'x'.join([imap_one, imap_two, str(iterations)])
+                    mkk_key = 'x'.join([imap_one, imap_two.split('__')[-1], str(iterations)])
                     ell_key = '__deltal_{0:0.0f}__width_{1:0.2f}'.format(deltal, width).replace('.', 'p')
                     path_mkk_dir = self.parse_path(os.path.join(self.config_dict['io']['output_folder'])+' mkk')
                     mask_key=""
@@ -254,6 +256,7 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                     mkk_filename = mkk_key+ell_key+mask_key+'.pkl'
                     #mkk_filename = mkk_key+ell_key+mask_key+'.fits'
                     path_mkk_file = os.path.join(path_mkk_dir, mkk_filename)
+                    #pdb.set_trace()
                     # Import if exists.  Calculate if not.
                     if os.path.isfile(path_mkk_file) and not overwrite:
                         mkk_array = Toolbox.import_saved_pickles(path_mkk_file)
@@ -261,8 +264,8 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         print('Calculating {} mkk'.format(mkk_key))
                         kmap = maps_dict[imap_one]['kmap']
                         pix_arcsec = maps_dict[imap_one]['pixel_size']
-                        mask_one = maps_dict[imap_one]['masks']['mask']
-                        mask_two = maps_dict_two[imap_two]['masks']['mask']
+                        mask_one = maps_dict[imap_one]['masks']['mask'].copy()
+                        mask_two = maps_dict_two[imap_two]['masks']['mask'].copy()
                         if 'hanning' in maps_dict[imap_one]['masks']:
                             mask_one *= maps_dict[imap_one]['masks']['hanning']
                             mask_two *= maps_dict_two[imap_two]['masks']['hanning']
@@ -318,6 +321,7 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                             mask_key = 'kaiser'
                     fft_key = 'X'.join([imap_one, imap_two])
                     pk_key = 'X'.join([imap_one, imap_two, str(iterations)])
+                    mkk_key = 'x'.join([imap_one, imap_two.split('__')[-1], str(iterations)])
                     ell_key = '__deltal_{0:0.0f}__width_{1:0.2f}'.format(deltal, width).replace('.', 'p')
                     pk_filename = pk_key + ell_key + '.pkl'
                     #path_pk_dir = self.parse_path(os.path.join(self.config_dict['io']['output_folder']) + ' pk')
@@ -346,8 +350,10 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         #ell_bins = self.get_ell_bins(map_one, pix_arcsec, deltal=deltal, width=width)
 
                         # get masks
-                        mask_one = maps_dict[imap_one]['masks']['mask']
-                        mask_two = maps_dict_two[imap_two]['masks']['mask']
+                        mask_one = maps_dict[imap_one]['masks']['mask']#.copy()
+                        mask_two = maps_dict_two[imap_two]['masks']['mask']#.copy()
+                        #plt.imshow(maps_dict[imap_one]['masks']['mask'])
+                        #pdb.set_trace()
                         if 'hanning' in maps_dict[imap_one]['masks']:
                             mask_one *= maps_dict[imap_one]['masks']['hanning']
                             mask_two *= maps_dict_two[imap_two]['masks']['hanning']
@@ -357,7 +363,8 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         elif 'blackman' in maps_dict[imap_one]['masks']:
                             mask_one *= maps_dict[imap_one]['masks']['blackman']
                             mask_two *= maps_dict_two[imap_two]['masks']['blackman']
-
+                        #plt.imshow(maps_dict[imap_one]['masks']['mask'])
+                        #pdb.set_trace()
                         fft_array = self.get_twod_ifft_idl(map_one * mask_one, map_two * mask_two, pix_arcsec=pix_arcsec)
                         #fft_array = self.get_twod_fft(map_one * mask_one, map_two * mask_two, pix_arcsec=pix_arcsec)
 
@@ -407,7 +414,7 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
 
                         # Correct MKK if given.
                         if mkk_dict is not None:
-                            mkk = np.linalg.inv(mkk_dict[pk_key.lower()])
+                            mkk = np.linalg.inv(mkk_dict[mkk_key.lower()])
                             pk_dict['pk_mkk_corrected'] = np.matmul(pk_array, mkk)
                             pk_dict['pk_mkk_and_beam_corrected'] = np.matmul(pk_array, mkk) / Bl
 
