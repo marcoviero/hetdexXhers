@@ -57,27 +57,30 @@ class Catalogs:
 			mapname_key = {'17p6': 'PSW', '23p9': 'PMW', '35p2': 'PLW'}
 
 			for ifile in path_files:
-				map_params = {}
-				ikey = ifile.split('fwhm_')[-1].split('.')[0]
-				map_params['path_map'] = os.path.join(path_catalog, ifile)
-				map_params['wavelength'] = wavelength_key[ikey]
-				map_params['beam'] = {"fwhm": float(ikey.replace('p','.')), "area": beam_area_key[ikey]}
-				map_params['color_correction'] = color_correction_key[ikey]
-				if 'mask' in catalog_params:
-					mapname = mapname_key[ikey]
-					for imask in self.config_dict['maps']:
-						if mapname.lower() in imask.lower():
-							basename = os.path.basename(self.config_dict['maps'][imask]['path_map']).split('.')[0]
-							footprint_path = os.path.join(self.parse_path(catalog_params['mask']), basename)+\
-											 '_footprint.fits'
-				else:
-					footprint_path=None
+				if 'DS_Store' not in ifile:
+					map_params = {}
+					ikey = ifile.split('fwhm_')[-1].split('.')[0]
+					map_params['path_map'] = os.path.join(path_catalog, ifile)
+					#print(wavelength_key, ikey)
+					#pdb.set_trace()
+					map_params['wavelength'] = wavelength_key[ikey]
+					map_params['beam'] = {"fwhm": float(ikey.replace('p','.')), "area": beam_area_key[ikey]}
+					map_params['color_correction'] = color_correction_key[ikey]
+					if 'mask' in catalog_params:
+						mapname = mapname_key[ikey]
+						for imask in self.config_dict['maps']:
+							if mapname.lower() in imask.lower():
+								basename = os.path.basename(self.config_dict['maps'][imask]['path_map']).split('.')[0]
+								footprint_path = os.path.join(self.parse_path(catalog_params['mask']), basename)+\
+												 '_footprint.fits'
+					else:
+						footprint_path=None
 
-				map_dict = self.import_map_dict(map_params,
-												zeropad=False,
-												mask=mask,
-												footprint_path=footprint_path)
-				self.catalog_dict[ifile.split('.')[0]] = map_dict
+					map_dict = self.import_map_dict(map_params,
+													zeropad=False,
+													mask=mask,
+													footprint_path=footprint_path)
+					self.catalog_dict[ifile.split('.')[0]] = map_dict
 
 			#fwhm = [float(i.split('fwhm_')[-1].split('.')[0].replace('p', '.')) for i in path_files]
 			#map_key = [fwhm_key_dict[i.split('fwhm_')[-1].split('.')[0]] for i in path_files]
