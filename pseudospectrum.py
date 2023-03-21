@@ -4,6 +4,7 @@ import shutil
 import logging
 import pickle
 import json
+#from copy import deepcopy
 import numpy as np
 from astropy.io import fits
 from configparser import ConfigParser
@@ -266,6 +267,8 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         pix_arcsec = maps_dict[imap_one]['pixel_size']
                         mask_one = maps_dict[imap_one]['masks']['mask'].copy()
                         mask_two = maps_dict_two[imap_two]['masks']['mask'].copy()
+                        #mask_one = deepcopy(maps_dict[imap_one]['masks']['mask'])
+                        #mask_two = deepcopy(maps_dict_two[imap_two]['masks']['mask'])
                         if 'hanning' in maps_dict[imap_one]['masks']:
                             mask_one *= maps_dict[imap_one]['masks']['hanning']
                             mask_two *= maps_dict_two[imap_two]['masks']['hanning']
@@ -350,8 +353,10 @@ class PseudoSpectrum(Maps, Catalogs, Toolbox):
                         #ell_bins = self.get_ell_bins(map_one, pix_arcsec, deltal=deltal, width=width)
 
                         # get masks
-                        mask_one = maps_dict[imap_one]['masks']['mask']#.copy()
-                        mask_two = maps_dict_two[imap_two]['masks']['mask']#.copy()
+                        mask_one = maps_dict[imap_one]['masks']['mask'].copy()
+                        mask_two = maps_dict_two[imap_two]['masks']['mask'].copy()
+                        #mask_one = deepcopy(maps_dict[imap_one]['masks']['mask'])
+                        #mask_two = deepcopy(maps_dict_two[imap_two]['masks']['mask'])
                         #plt.imshow(maps_dict[imap_one]['masks']['mask'])
                         #pdb.set_trace()
                         if 'hanning' in maps_dict[imap_one]['masks']:
